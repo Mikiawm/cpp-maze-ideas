@@ -1,6 +1,7 @@
 #include "raylib.h"
 #include "stdlib.h"
 #include <cstdio>
+#include <iostream>
 
 class Cell
 {
@@ -14,6 +15,8 @@ public:
     Cell *south;
     Cell *west;
 
+    std::vector<Cell *> links;
+
     int randValue;
     Cell(int row, int column)
     {
@@ -24,8 +27,54 @@ public:
         this->randValue = rand() % 5;
     };
 
+    void print() { printf("%d\t", this->randValue); }
+
     void setRow(int row) { this->row = row; }
     void setColumn(int column) { this->column = column; }
+    std::vector<Cell *> getNeighbors()
+    {
+        std::vector<Cell *> neighbors;
+        if (this->north != nullptr)
+            neighbors.push_back(this->north);
+        if (this->south != nullptr)
+            neighbors.push_back(this->south);
+        if (this->west != nullptr)
+            neighbors.push_back(this->west);
+        if (this->east != nullptr)
+            neighbors.push_back(this->east);
+
+        return neighbors;
+    }
+
+    void link(Cell *cell, bool bidi = true)
+    {
+        links.push_back(cell);
+        if (bidi)
+        {
+            cell->link(this, false);
+        }
+    }
+
+    void unlink(Cell cell, bool bidi = true)
+    {
+        auto it = std::find_if(links.begin(), links.end(), [&cell](const Cell &obj)
+                               { return obj == cell; });
+        if (it != links.end())
+        {
+            auto index = std::distance(links.begin(), it);
+            links.erase(index);
+            if(bidi) {
+                cell->unlink(this);
+            }
+        }
+
+    }
+
+    bool operator==(const Cell &cell) const
+    {
+        return row == cell.row and column == cell.column;
+    }
+
     ~Cell();
 };
 
@@ -55,12 +104,35 @@ public:
                 this->cells[i][j].setRow(i);
                 this->cells[i][j].setColumn(i);
 
-                // cell.north = this->cells[i - 1][j];
-                // cell.south = this->cells[i + 1][j];
-                // cell.east = this->cells[i][j + 1];
-                // cell.west = this->cells[i][j - 1];
+                this->cells[i][j].north = this->getCell(i - 1, j);
+                this->cells[i][j].south = this->getCell(i + 1, j);
+                this->cells[i][j].east = this->getCell(i, j + 1);
+                this->cells[i][j].west = this->getCell(i, j - 1);
             }
         }
+    }
+
+    Cell *getCell(int row, int col)
+    {
+        if (row > 0 && row < this->rows && columns > 0 && columns < this->columns)
+        {
+            return &this->cells[row][col];
+        }
+        return nullptr;
+    }
+
+    Cell *eachCell()
+    {
+        auto temp = new Cell[this->rows * this->columns];
+        for (int i = 0; i < this->rows; i++)
+        {
+            for (int j = 0; j < this->columns; j++)
+            {
+                temp[i + 1 * j] = this->cells[i][j];
+            }
+        }
+
+        return temp;
     }
     Grid();
     ~Grid();
@@ -76,6 +148,11 @@ public:
             }
             printf("\n");
         }
+    };
+
+    int size()
+    {
+        return this->columns * this->rows;
     };
 };
 
